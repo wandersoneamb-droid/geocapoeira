@@ -69,7 +69,7 @@
             color: #444;
             line-height: 1.5;
             text-align: justify;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         .btn-entrar {
@@ -129,11 +129,11 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
-        /* --- GAVETA LATERAL RETRÁTIL (FILTROS) --- */
+        /* --- GAVETA RETRÁTIL LATERAL (FILTROS) --- */
         .painel-filtros {
             position: absolute;
             top: 0;
-            right: -320px; /* Começa escondido fora da tela */
+            right: -320px;
             width: 280px;
             height: 100vh;
             background: #ffffff;
@@ -146,7 +146,7 @@
         }
 
         .painel-filtros.aberto {
-            right: 0; /* Desliza para dentro da tela */
+            right: 0;
         }
 
         .cabecalho-filtro {
@@ -220,6 +220,26 @@
             filter: drop-shadow(0px 3px 4px rgba(0, 0, 0, 0.45));
         }
 
+        /* --- ETIQUETA COM O NOME DO NÚCLEO --- */
+        .rotulo-nucleo {
+            background-color: rgba(255, 255, 255, 0.94);
+            border: 1px solid #b71c1c;
+            border-radius: 4px;
+            color: #111111;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.35);
+            white-space: nowrap;
+            pointer-events: none; /* Não bloqueia o clique no mapa */
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        /* Oculta os rótulos quando o zoom estiver aberto/afastado */
+        .ocultar-rotulos .rotulo-nucleo {
+            display: none !important;
+        }
+
         /* --- AJUSTES DO POPUP --- */
         .leaflet-popup-content-wrapper {
             border-radius: 8px;
@@ -283,9 +303,16 @@
             <h2>GeoCapoeira</h2>
             <div class="subtitulo">Associação Cultural Zambê Capoeira</div>
             <p>
-                Bem-vindo ao <b>GeoCapoeira</b>, o geoportal interativo desenvolvido para mapear e aproximar você dos núcleos de treino, projetos sociais e rodas de capoeira.
-                <br><br>
-                Utilize a aba de filtros para encontrar aulas por dia, público ou categoria, consulte os horários e fale diretamente com os responsáveis via WhatsApp ou trace sua rota pelo mapa.
+                Bem-vindo ao <b>GeoCapoeira</b>, o geoportal oficial da Associação Cultural Zambê Capoeira! Este espaço foi desenvolvido para aproximar você dos nossos núcleos de treino, projetos sociais e rodas culturais espalhadas pela cidade.
+            </p>
+            <p style="margin-top: 10px; font-size: 13px;">
+                <b>Como navegar pelo mapa:</b><br>
+                🔍 <b>Filtros:</b> Toque no botão <i>Filtrar</i> para buscar aulas por dia, categoria ou público.<br>
+                📍 <b>Detalhes:</b> Clique sobre os marcadores vermelhos para ver horários e responsáveis.<br>
+                📲 <b>Contato & Rota:</b> Fale direto com o professor via WhatsApp ou trace a rota até o local.
+            </p>
+            <p style="margin-top: 10px; font-weight: bold; text-align: center; color: #1a472a;">
+                Escolha o núcleo mais próximo e venha treinar conosco!
             </p>
             <button class="btn-entrar" onclick="fecharModal()">Explorar Mapa</button>
         </div>
@@ -356,7 +383,7 @@
             gaveta.classList.toggle('aberto');
         }
 
-        // Ícone Vermelho Grande em SVG
+        // Marcador Vermelho SVG
         var iconeVermelho = L.divIcon({
             className: 'marcador-vermelho-svg',
             html: `
@@ -370,7 +397,7 @@
             popupAnchor: [0, -44]
         });
 
-        // Camadas do mapa
+        // Camadas base
         var googleHibrido = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
             maxZoom: 22,
             attribution: '&copy; Google Maps'
@@ -393,6 +420,18 @@
         L.control.layers(mapasBase, null, { position: 'topleft' }).addTo(map);
 
         var camadaAtiva = L.layerGroup().addTo(map);
+
+        // Controle de visibilidade dos rótulos por nível de Zoom
+        function verificarZoomRotulos() {
+            var container = map.getContainer();
+            // A partir do zoom 14 (nível de bairro/ruas), exibe os nomes
+            if (map.getZoom() >= 14) {
+                container.classList.remove('ocultar-rotulos');
+            } else {
+                container.classList.add('ocultar-rotulos');
+            }
+        }
+        map.on('zoomend', verificarZoomRotulos);
 
         function criarPopup(feature) {
             var props = feature.properties;
@@ -460,7 +499,18 @@
 
             var camadaTemp = L.geoJSON(pontosCapoeira, {
                 pointToLayer: function (feature, latlng) {
-                    return L.marker(latlng, { icon: iconeVermelho });
+                    var marker = L.marker(latlng, { icon: iconeVermelho });
+                    
+                    // Rótulo permanente posicionado logo abaixo da ponta do marcador
+                    if (feature.properties && feature.properties.nome_local) {
+                        marker.bindTooltip(feature.properties.nome_local, {
+                            permanent: true,
+                            direction: 'bottom',
+                            className: 'rotulo-nucleo',
+                            offset: [0, 4]
+                        });
+                    }
+                    return marker;
                 },
                 filter: function (feature) {
                     var props = feature.properties;
@@ -486,6 +536,8 @@
             if (camadaTemp.getLayers().length > 0) {
                 map.fitBounds(camadaTemp.getBounds(), { padding: [50, 50], maxZoom: 16 });
             }
+            
+            verificarZoomRotulos();
         }
 
         function carregarOpcoesDinamicas() {
