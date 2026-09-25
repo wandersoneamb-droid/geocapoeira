@@ -10,6 +10,7 @@
             margin: 0; 
             padding: 0; 
             font-family: Arial, Helvetica, sans-serif;
+            overflow: hidden;
         }
         #mapa { 
             width: 100vw; 
@@ -88,7 +89,26 @@
             background-color: #27693e;
         }
 
-        /* --- BOTÃO DE INFORMAÇÕES (?) --- */
+        /* --- BOTÕES FLUTUANTES NO MAPA --- */
+        .btn-abrir-filtro {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: #1a472a;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 30px;
+            padding: 9px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+        }
+
         .btn-info {
             position: absolute;
             bottom: 25px;
@@ -109,46 +129,68 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
 
-        /* --- PAINEL DE FILTROS --- */
+        /* --- GAVETA LATERAL RETRÁTIL (FILTROS) --- */
         .painel-filtros {
             position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.96);
-            padding: 14px 16px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            max-width: 270px;
-            width: calc(100vw - 60px);
+            top: 0;
+            right: -320px; /* Começa escondido fora da tela */
+            width: 280px;
+            height: 100vh;
+            background: #ffffff;
+            z-index: 1001;
+            padding: 24px 20px;
+            box-sizing: border-box;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.3);
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
         }
 
-        .painel-filtros h4 {
-            margin: 0 0 10px 0;
-            color: #1a472a;
-            font-size: 16px;
+        .painel-filtros.aberto {
+            right: 0; /* Desliza para dentro da tela */
+        }
+
+        .cabecalho-filtro {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 6px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+
+        .cabecalho-filtro h4 {
+            margin: 0;
+            color: #1a472a;
+            font-size: 18px;
+        }
+
+        .btn-fechar-filtro {
+            background: none;
+            border: none;
+            font-size: 22px;
+            font-weight: bold;
+            color: #777;
+            cursor: pointer;
+            padding: 4px 8px;
         }
 
         .campo-filtro {
-            margin-bottom: 9px;
+            margin-bottom: 16px;
         }
 
         .campo-filtro label {
             display: block;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
-            color: #444;
-            margin-bottom: 3px;
+            color: #333;
+            margin-bottom: 6px;
             text-transform: uppercase;
         }
 
         .campo-filtro select {
             width: 100%;
-            padding: 8px;
-            border-radius: 4px;
+            padding: 10px;
+            border-radius: 6px;
             border: 1px solid #bbb;
             font-size: 14px;
             background-color: #fff;
@@ -160,12 +202,12 @@
             background-color: #1a472a;
             color: #fff;
             border: none;
-            padding: 10px;
-            border-radius: 4px;
-            font-size: 13px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 4px;
+            margin-top: 10px;
         }
 
         /* --- MARCADOR VERMELHO PERSONALIZADO --- */
@@ -178,7 +220,7 @@
             filter: drop-shadow(0px 3px 4px rgba(0, 0, 0, 0.45));
         }
 
-        /* --- AJUSTES DO POPUP PARA ECRÃS MÓVEIS --- */
+        /* --- AJUSTES DO POPUP --- */
         .leaflet-popup-content-wrapper {
             border-radius: 8px;
             padding: 4px;
@@ -205,7 +247,6 @@
             margin-bottom: 6px;
         }
 
-        /* --- BOTÕES POPUP --- */
         .acoes-popup {
             display: flex;
             flex-direction: column;
@@ -244,18 +285,26 @@
             <p>
                 Bem-vindo ao <b>GeoCapoeira</b>, o geoportal interativo desenvolvido para mapear e aproximar você dos núcleos de treino, projetos sociais e rodas de capoeira.
                 <br><br>
-                Utilize os filtros no canto da tela para encontrar aulas por dia, público ou categoria, consulte os horários e fale diretamente com os responsáveis via WhatsApp ou trace sua rota pelo mapa.
+                Utilize a aba de filtros para encontrar aulas por dia, público ou categoria, consulte os horários e fale diretamente com os responsáveis via WhatsApp ou trace sua rota pelo mapa.
             </p>
             <button class="btn-entrar" onclick="fecharModal()">Explorar Mapa</button>
         </div>
     </div>
 
+    <!-- BOTÃO FLUTUANTE PARA ABRIR O FILTRO -->
+    <button class="btn-abrir-filtro" onclick="alternarGavetaFiltros()">
+        <span>🔍</span> Filtrar
+    </button>
+
     <!-- BOTÃO PARA REABRIR A APRESENTAÇÃO -->
     <button class="btn-info" title="Sobre o GeoCapoeira" onclick="abrirModal()">?</button>
 
-    <!-- PAINEL DE FILTROS -->
-    <div class="painel-filtros">
-        <h4>Filtros de Treino</h4>
+    <!-- GAVETA RETRÁTIL LATERAL DE FILTROS -->
+    <div id="gaveta-filtros" class="painel-filtros">
+        <div class="cabecalho-filtro">
+            <h4>Filtros de Treino</h4>
+            <button class="btn-fechar-filtro" onclick="alternarGavetaFiltros()">✕</button>
+        </div>
         
         <div class="campo-filtro">
             <label for="filtro-dia">Dia da Semana:</label>
@@ -300,6 +349,11 @@
 
         function abrirModal() {
             document.getElementById('modal-apresentacao').style.display = 'flex';
+        }
+
+        function alternarGavetaFiltros() {
+            var gaveta = document.getElementById('gaveta-filtros');
+            gaveta.classList.toggle('aberto');
         }
 
         // Ícone Vermelho Grande em SVG
