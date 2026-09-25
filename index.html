@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>GeoCapoeira - Mapeamento de Rodas e Núcleos</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        #mapa { 
+            width: 100vw; 
+            height: 100vh; 
+        }
+
+        /* Painel de Filtros Flutuante */
+        .painel-filtros {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 14px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            max-width: 260px;
+            width: calc(100vw - 60px);
+        }
+
+        .painel-filtros h4 {
+            margin: 0 0 10px 0;
+            color: #1a472a;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .campo-filtro {
+            margin-bottom: 9px;
+        }
+
+        .campo-filtro label {
+            display: block;
+            font-size: 11px;
+            font-weight: bold;
+            color: #444;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        .campo-filtro select {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: 1px solid #bbb;
+            font-size: 13px;
+            background-color: #fff;
+            outline: none;
+        }
+
+        .campo-filtro select:focus {
+            border-color: #1a472a;
+        }
+
+        .btn-limpar {
+            width: 100%;
+            background-color: #1a472a;
+            color: #fff;
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 4px;
+            transition: background 0.2s;
+        }
+
+        .btn-limpar:hover {
+            background-color: #27693e;
+        }
+
+        /* Botões de Ação dentro do Popup */
+        .acoes-popup {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .btn-popup {
+            display: inline-block;
+            text-align: center;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 7px 10px;
+            border-radius: 4px;
+            color: #ffffff !important;
+            transition: opacity 0.2s;
+        }
+
+        .btn-popup:hover {
+            opacity: 0.9;
+        }
+
+        .btn-whatsapp {
+            background-color: #25D366;
+        }
+
+        .btn-rota {
+            background-color: #1a73e8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="painel-filtros">
+        <h4>Filtros de Treino</h4>
+        
+        <div class="campo-filtro">
+            <label for="filtro-dia">Dia da Semana:</label>
+            <select id="filtro-dia" onchange="aplicarFiltros()">
+                <option value="todos">Todos os Dias</option>
+                <option value="segunda">Segunda-feira</option>
+                <option value="terça">Terça-feira</option>
+                <option value="quarta">Quarta-feira</option>
+                <option value="quinta">Quinta-feira</option>
+                <option value="sexta">Sexta-feira</option>
+                <option value="sábado">Sábado</option>
+                <option value="domingo">Domingo</option>
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-categoria">Categoria:</label>
+            <select id="filtro-categoria" onchange="aplicarFiltros()">
+                <option value="todos">Todas as Categorias</option>
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-publico">Público:</label>
+            <select id="filtro-publico" onchange="aplicarFiltros()">
+                <option value="todos">Todos os Públicos</option>
+            </select>
+        </div>
+
+        <button class="btn-limpar" onclick="resetarFiltros()">Mostrar Todos</button>
+    </div>
+
+    <div id="mapa"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="dados.js"></script>
+    
+    <script>
+        var googleHibrido = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 22,
+            attribution: '&copy; Google Maps'
+        });
+
+        var googleRuas = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 22,
+            attribution: '&copy; Google Maps'
+        });
+
+        var map = L.map('mapa', {
+            layers: [googleHibrido],
+            maxZoom: 21
+        }).setView([-10.1833, -48.3333], 13);
+
+        var mapasBase = {
+            "Google Satélite (com ruas)": googleHibrido,
+            "Google Ruas": googleRuas
+        };
+        L.control.layers(mapasBase, null, { position: 'topleft' }).addTo(map);
+
+        var camadaAtiva = L.layerGroup().addTo(map);
+
+        function criarPopup(feature) {
+            var props = feature.properties;
+            var coords = feature.geometry.coordinates; // [longitude, latitude]
+            var lat = coords[1];
+            var lng = coords[0];
+
+            var valorStatus = props.status_ativo ? props.status_ativo.toString().trim().toUpperCase() : '';
+            var statusTexto = (valorStatus === 'SIM' || valorStatus === 'TRUE')
+                ? '<span style="color: green; font-weight: bold;">Em atividade</span>'
+                : '<span style="color: red; font-weight: bold;">Recesso / Inativo</span>';
+
+            var htmlBotoesWhats = '';
+            if (props.contato) {
+                // Divide por barra, vírgula ou pela palavra 'e'
+                var listaContatos = props.contato.toString().split(/[\/,\be\b]+/);
+                
+                listaContatos.forEach(function(itemContato, index) {
+                    var numeroLimpo = itemContato.replace(/\D/g, '');
+                    
+                    if (numeroLimpo.length === 10 || numeroLimpo.length === 11) {
+                        numeroLimpo = '55' + numeroLimpo;
+                    }
+
+                    if (numeroLimpo.length >= 12) {
+                        var rotuloBotao = listaContatos.length > 1 
+                            ? `WhatsApp (Contato ${index + 1})` 
+                            : 'Falar no WhatsApp';
+
+                        var textoMsg = encodeURIComponent(`Olá! Vi o núcleo ${props.nome_local} no GeoCapoeira e gostaria de informações sobre os treinos.`);
+                        var linkWhats = `https://wa.me/${numeroLimpo}?text=${textoMsg}`;
+                        
+                        htmlBotoesWhats += `<a href="${linkWhats}" target="_blank" class="btn-popup btn-whatsapp">${rotuloBotao}</a>`;
+                    }
+                });
+            }
+
+            var linkRota = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+            return `
+                <div style="font-family: Arial, sans-serif; font-size: 13px; line-height: 1.4; min-width: 190px;">
+                    <h3 style="margin: 0 0 4px 0; color: #1a472a;">${props.nome_local || ''}</h3>
+                    <span style="font-size: 12px; color: #555;"><i>${props.grupo || ''}</i></span>
+                    <hr style="margin: 6px 0; border: 0; border-top: 1px solid #ccc;">
+                    <b>Categoria:</b> ${props.categoria || '-'}<br>
+                    <b>Público:</b> ${props.publico || '-'}<br>
+                    <b>Dias:</b> ${props.dias_treino || '-'}<br>
+                    <b>Horário:</b> ${props.horario || '-'}<br>
+                    <b>Responsável:</b> ${props.responsavel || '-'}<br>
+                    <b>Situação:</b> ${statusTexto}<br>
+                    
+                    <div class="acoes-popup">
+                        ${htmlBotoesWhats}
+                        <a href="${linkRota}" target="_blank" class="btn-popup btn-rota">Como Chegar (Rota)</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function normalizarTexto(txt) {
+            return (txt || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function renderizarPontos(filtroDia, filtroCat, filtroPub) {
+            camadaAtiva.clearLayers();
+
+            var camadaTemp = L.geoJSON(pontosCapoeira, {
+                filter: function (feature) {
+                    var props = feature.properties;
+                    
+                    var bateuCat = (filtroCat === 'todos') || (props.categoria === filtroCat);
+                    var bateuPub = (filtroPub === 'todos') || (props.publico === filtroPub);
+                    
+                    var bateuDia = true;
+                    if (filtroDia !== 'todos') {
+                        var diasTexto = normalizarTexto(props.dias_treino);
+                        var diaBuscado = normalizarTexto(filtroDia);
+                        bateuDia = diasTexto.includes(diaBuscado);
+                    }
+
+                    return bateuDia && bateuCat && bateuPub;
+                },
+                onEachFeature: function (feature, layer) {
+                    layer.bindPopup(criarPopup(feature));
+                }
+            });
+
+            camadaAtiva.addLayer(camadaTemp);
+
+            if (camadaTemp.getLayers().length > 0) {
+                map.fitBounds(camadaTemp.getBounds(), { padding: [50, 50], maxZoom: 16 });
+            }
+        }
+
+        function carregarOpcoesDinamicas() {
+            var categorias = new Set();
+            var publicos = new Set();
+
+            pontosCapoeira.features.forEach(function (ponto) {
+                if (ponto.properties.categoria) categorias.add(ponto.properties.categoria);
+                if (ponto.properties.publico) publicos.add(ponto.properties.publico);
+            });
+
+            var selectCat = document.getElementById('filtro-categoria');
+            categorias.forEach(function (cat) {
+                var opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                selectCat.appendChild(opt);
+            });
+
+            var selectPub = document.getElementById('filtro-publico');
+            publicos.forEach(function (pub) {
+                var opt = document.createElement('option');
+                opt.value = pub;
+                opt.textContent = pub;
+                selectPub.appendChild(opt);
+            });
+        }
+
+        function aplicarFiltros() {
+            var dia = document.getElementById('filtro-dia').value;
+            var cat = document.getElementById('filtro-categoria').value;
+            var pub = document.getElementById('filtro-publico').value;
+            renderizarPontos(dia, cat, pub);
+        }
+
+        function resetarFiltros() {
+            document.getElementById('filtro-dia').value = 'todos';
+            document.getElementById('filtro-categoria').value = 'todos';
+            document.getElementById('filtro-publico').value = 'todos';
+            renderizarPontos('todos', 'todos', 'todos');
+        }
+
+        carregarOpcoesDinamicas();
+        renderizarPontos('todos', 'todos', 'todos');
+    </script>
+</body>
+</html>
