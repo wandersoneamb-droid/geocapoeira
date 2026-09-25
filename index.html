@@ -2,6 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoCapoeira - Mapeamento de Rodas e Núcleos</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
@@ -15,24 +16,117 @@
             height: 100vh; 
         }
 
-        /* Painel de Filtros Flutuante */
+        /* --- TELA INICIAL / MODAL DE APRESENTAÇÃO --- */
+        .fundo-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(3px);
+            transition: opacity 0.3s ease;
+        }
+
+        .cartao-apresentacao {
+            background: #ffffff;
+            width: 90%;
+            max-width: 440px;
+            padding: 26px 22px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .cartao-apresentacao img {
+            max-width: 130px;
+            height: auto;
+            margin-bottom: 12px;
+        }
+
+        .cartao-apresentacao h2 {
+            margin: 0 0 6px 0;
+            color: #1a472a;
+            font-size: 22px;
+        }
+
+        .cartao-apresentacao .subtitulo {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 14px;
+            font-weight: bold;
+        }
+
+        .cartao-apresentacao p {
+            font-size: 14px;
+            color: #444;
+            line-height: 1.5;
+            text-align: justify;
+            margin-bottom: 18px;
+        }
+
+        .btn-entrar {
+            background-color: #1a472a;
+            color: #ffffff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .btn-entrar:hover {
+            background-color: #27693e;
+        }
+
+        /* --- BOTÃO DE INFORMAÇÕES (?) --- */
+        .btn-info {
+            position: absolute;
+            bottom: 25px;
+            left: 20px;
+            z-index: 1000;
+            background: #ffffff;
+            color: #1a472a;
+            border: 2px solid #1a472a;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        /* --- PAINEL DE FILTROS --- */
         .painel-filtros {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 15px;
+            right: 15px;
             z-index: 1000;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.96);
             padding: 14px 16px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            max-width: 260px;
+            max-width: 270px;
             width: calc(100vw - 60px);
         }
 
         .painel-filtros h4 {
             margin: 0 0 10px 0;
             color: #1a472a;
-            font-size: 15px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -44,7 +138,7 @@
 
         .campo-filtro label {
             display: block;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: bold;
             color: #444;
             margin-bottom: 3px;
@@ -53,16 +147,12 @@
 
         .campo-filtro select {
             width: 100%;
-            padding: 6px 8px;
+            padding: 8px;
             border-radius: 4px;
             border: 1px solid #bbb;
-            font-size: 13px;
+            font-size: 14px;
             background-color: #fff;
             outline: none;
-        }
-
-        .campo-filtro select:focus {
-            border-color: #1a472a;
         }
 
         .btn-limpar {
@@ -70,41 +160,68 @@
             background-color: #1a472a;
             color: #fff;
             border: none;
-            padding: 8px;
+            padding: 10px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
             margin-top: 4px;
-            transition: background 0.2s;
         }
 
-        .btn-limpar:hover {
-            background-color: #27693e;
+        /* --- MARCADOR VERMELHO PERSONALIZADO --- */
+        .marcador-vermelho-svg {
+            background: none;
+            border: none;
         }
 
-        /* Botões de Ação dentro do Popup */
+        .marcador-vermelho-svg svg {
+            filter: drop-shadow(0px 3px 4px rgba(0, 0, 0, 0.45));
+        }
+
+        /* --- AJUSTES DO POPUP PARA ECRÃS MÓVEIS --- */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .conteudo-popup {
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.5;
+            min-width: 220px;
+            color: #222;
+        }
+
+        .conteudo-popup h3 {
+            margin: 0 0 4px 0;
+            color: #b71c1c;
+            font-size: 18px;
+        }
+
+        .conteudo-popup .subtitulo-popup {
+            font-size: 13px;
+            color: #555;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        /* --- BOTÕES POPUP --- */
         .acoes-popup {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            margin-top: 10px;
+            gap: 8px;
+            margin-top: 12px;
         }
 
         .btn-popup {
             display: inline-block;
             text-align: center;
             text-decoration: none;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
-            padding: 7px 10px;
-            border-radius: 4px;
+            padding: 10px 12px;
+            border-radius: 6px;
             color: #ffffff !important;
-            transition: opacity 0.2s;
-        }
-
-        .btn-popup:hover {
-            opacity: 0.9;
         }
 
         .btn-whatsapp {
@@ -118,6 +235,25 @@
 </head>
 <body>
 
+    <!-- MODAL DE BOAS-VINDAS -->
+    <div id="modal-apresentacao" class="fundo-modal">
+        <div class="cartao-apresentacao">
+            <img src="logo.png" alt="Logo Zambê Capoeira" onerror="this.style.display='none'">
+            <h2>GeoCapoeira</h2>
+            <div class="subtitulo">Associação Cultural Zambê Capoeira</div>
+            <p>
+                Bem-vindo ao <b>GeoCapoeira</b>, o geoportal interativo desenvolvido para mapear e aproximar você dos núcleos de treino, projetos sociais e rodas de capoeira.
+                <br><br>
+                Utilize os filtros no canto da tela para encontrar aulas por dia, público ou categoria, consulte os horários e fale diretamente com os responsáveis via WhatsApp ou trace sua rota pelo mapa.
+            </p>
+            <button class="btn-entrar" onclick="fecharModal()">Explorar Mapa</button>
+        </div>
+    </div>
+
+    <!-- BOTÃO PARA REABRIR A APRESENTAÇÃO -->
+    <button class="btn-info" title="Sobre o GeoCapoeira" onclick="abrirModal()">?</button>
+
+    <!-- PAINEL DE FILTROS -->
     <div class="painel-filtros">
         <h4>Filtros de Treino</h4>
         
@@ -158,6 +294,29 @@
     <script src="dados.js"></script>
     
     <script>
+        function fecharModal() {
+            document.getElementById('modal-apresentacao').style.display = 'none';
+        }
+
+        function abrirModal() {
+            document.getElementById('modal-apresentacao').style.display = 'flex';
+        }
+
+        // Ícone Vermelho Grande em SVG
+        var iconeVermelho = L.divIcon({
+            className: 'marcador-vermelho-svg',
+            html: `
+                <svg width="34" height="48" viewBox="0 0 34 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17 0C7.61 0 0 7.61 0 17C0 29.75 17 48 17 48C17 48 34 29.75 34 17C34 7.61 26.39 0 17 0Z" fill="#D32F2F"/>
+                    <circle cx="17" cy="17" r="7" fill="#FFFFFF"/>
+                </svg>
+            `,
+            iconSize: [34, 48],
+            iconAnchor: [17, 48],
+            popupAnchor: [0, -44]
+        });
+
+        // Camadas do mapa
         var googleHibrido = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
             maxZoom: 22,
             attribution: '&copy; Google Maps'
@@ -183,18 +342,17 @@
 
         function criarPopup(feature) {
             var props = feature.properties;
-            var coords = feature.geometry.coordinates; // [longitude, latitude]
+            var coords = feature.geometry.coordinates;
             var lat = coords[1];
             var lng = coords[0];
 
             var valorStatus = props.status_ativo ? props.status_ativo.toString().trim().toUpperCase() : '';
             var statusTexto = (valorStatus === 'SIM' || valorStatus === 'TRUE')
-                ? '<span style="color: green; font-weight: bold;">Em atividade</span>'
-                : '<span style="color: red; font-weight: bold;">Recesso / Inativo</span>';
+                ? '<span style="color: #2e7d32; font-weight: bold;">Em atividade</span>'
+                : '<span style="color: #c62828; font-weight: bold;">Recesso / Inativo</span>';
 
             var htmlBotoesWhats = '';
             if (props.contato) {
-                // Divide por barra, vírgula ou pela palavra 'e'
                 var listaContatos = props.contato.toString().split(/[\/,\be\b]+/);
                 
                 listaContatos.forEach(function(itemContato, index) {
@@ -220,9 +378,9 @@
             var linkRota = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 
             return `
-                <div style="font-family: Arial, sans-serif; font-size: 13px; line-height: 1.4; min-width: 190px;">
-                    <h3 style="margin: 0 0 4px 0; color: #1a472a;">${props.nome_local || ''}</h3>
-                    <span style="font-size: 12px; color: #555;"><i>${props.grupo || ''}</i></span>
+                <div class="conteudo-popup">
+                    <h3>${props.nome_local || ''}</h3>
+                    <span class="subtitulo-popup"><i>${props.grupo || ''}</i></span>
                     <hr style="margin: 6px 0; border: 0; border-top: 1px solid #ccc;">
                     <b>Categoria:</b> ${props.categoria || '-'}<br>
                     <b>Público:</b> ${props.publico || '-'}<br>
@@ -247,9 +405,11 @@
             camadaAtiva.clearLayers();
 
             var camadaTemp = L.geoJSON(pontosCapoeira, {
+                pointToLayer: function (feature, latlng) {
+                    return L.marker(latlng, { icon: iconeVermelho });
+                },
                 filter: function (feature) {
                     var props = feature.properties;
-                    
                     var bateuCat = (filtroCat === 'todos') || (props.categoria === filtroCat);
                     var bateuPub = (filtroPub === 'todos') || (props.publico === filtroPub);
                     
